@@ -17,4 +17,10 @@ Written entirely in Bash, leveraging common linux tools (curl jq bc tr)
 * bc
 * tr
 
-If missing, run `sudo apt-get install curl jq bc tr` to install
+If missing, run `sudo apt-get install curl jq bc tr` to install on Debian based distros
+
+## Configuration
+Populate Exchange API keys, notification email address and trading config in `bctb.cfg`
+
+## Run
+`./bctb.sh`
