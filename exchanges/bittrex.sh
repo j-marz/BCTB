@@ -217,9 +217,9 @@ get_balance() {
 	api_response_parser "$balance" "get_balance" || return 1
 	bittrex_balance="$(grep '^{' "$balance" | jq -r '.result.Available')"
 	# handle empty balances in bittrex exchange
-	if [ "$available_balance" = "" ]; then
+	if [ "$bittrex_balance" = "" ]; then
 		available_balance="0"
-	elif [ "$available_balance" = "null" ]; then
+	elif [ "$bittrex_balance" = "null" ]; then
 		available_balance="0"
 	else
 		available_balance="$(echo "$bittrex_balance" | xargs printf "%.8f")"
