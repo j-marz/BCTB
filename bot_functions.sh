@@ -431,10 +431,11 @@ collect_backtest_data() {
 	# writes market ask and bid to a base currency specific file with timestamps
 	backtest_data_file="$base_currency-backtest.data"
 	backtest_data_file_header="timestamp,base_currency,market_ask,market_bid"
+	backtest_data_time_epoch="$(date +"%s")"
 	if [ ! -f "$backtest_data_file" ]; then
 		echo "$backtest_data_file_header" > "$backtest_data_file"
 	fi
-	echo "$current_time_epoch,$base_currency,$market_ask,$market_bid" >> "$backtest_data_file"
+	echo "$backtest_data_time_epoch,$base_currency,$market_ask,$market_bid" >> "$backtest_data_file"
 }
 
 #self_heal() {
