@@ -110,14 +110,13 @@ Base balance: $base_balance $base_currency
 Quote balance: $quote_balance $quote_currency
 Last market price: $market_last_price $quote_currency (1 $base_currency)
 Total balance in $quote_currency: $quote_total $quote_currency
-Total balance in $base_currency: $base_total $base_currency
 EOF
 )"
 echo "$opening_balance"
 send_email "Bot started @ $bot_start_time_long" "System uptime: $(uptime) \n\n$opening_balance"
 # store opening balances for later profit/loss comparison
 opening_quote_total="$quote_total"
-opening_base_total="$base_total"
+#opening_base_total="$base_total"
 opening_market_last_price="$market_last_price"
 
 while true
@@ -166,18 +165,15 @@ Current $market_name market position balances:
 Base balance: $base_balance $base_currency
 Quote balance: $quote_balance $quote_currency
 Total balance in $quote_currency: $quote_total $quote_currency
-Total balance in $base_currency: $base_total $base_currency
 ---
 Market prices:
-Last market price: $market_last_price $quote_currency (1 $base_currency) 
+Last market price: $market_last_price $quote_currency (1 $base_currency)
 Opening market price: $opening_market_last_price $quote_currency ($opening_market_last_price_percent % diff)
 Previous market price ($market_position_updates hours): $previous_market_last_price $quote_currency ($last_market_last_price_percent % diff)
 ---
 Profit and Loss comparison:
 Since bot started $quote_currency: $opening_quote_total_pnl ($opening_quote_total_percent % diff)
-Since bot started $base_currency: $opening_base_total_pnl ($opening_base_total_percent % diff)
 Last $market_position_updates hours $quote_currency: $last_quote_total_pnl ($last_quote_total_percent % diff)
-Last $market_position_updates hours $base_currency: $last_base_total_pnl ($last_base_total_percent % diff)
 ---
 Bot running since $bot_start_time_long
 Bot running for $bot_uptime_days days ($bot_uptime_hours hours)

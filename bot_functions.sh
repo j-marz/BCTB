@@ -235,35 +235,47 @@ market_position() {
 	quote_balance="$available_balance"
 	get_market || return 1
 	quote_total="$(echo "($base_balance * $market_last_price) + $quote_balance" | bc -l | xargs printf "%.8f")"
-	base_total="$(echo "($quote_balance / $market_last_price) + $base_balance" | bc -l | xargs printf "%.8f")"
+	#base_total="$(echo "($quote_balance / $market_last_price) + $base_balance" | bc -l | xargs printf "%.8f")"
 	if [ ! -z "$opening_quote_total" ]; then
 		opening_quote_total_pnl="$(echo "$quote_total - $opening_quote_total" | bc -l | xargs printf "%.8f")"
 		opening_quote_total_percent="$(echo "(($quote_total - $opening_quote_total) / $opening_quote_total) * 100" | bc -l | xargs printf "%.8f")"
 	fi
-	if [ ! -z "$opening_base_total" ]; then
-		opening_base_total_pnl="$(echo "$base_total - $opening_base_total" | bc -l | xargs printf "%.8f")"
-		opening_base_total_percent="$(echo "(($base_total - $opening_base_total) / $opening_base_total) * 100" | bc -l | xargs printf "%.8f")"
-	fi
+	#if [ ! -z "$opening_base_total" ]; then
+	#	opening_base_total_pnl="$(echo "$base_total - $opening_base_total" | bc -l | xargs printf "%.8f")"
+	#	opening_base_total_percent="$(echo "(($base_total - $opening_base_total) / $opening_base_total) * 100" | bc -l | xargs printf "%.8f")"
+	#fi
 	if [ ! -z "$last_quote_total" ]; then
 		last_quote_total_pnl="$(echo "$quote_total - $last_quote_total" | bc -l | xargs printf "%.8f")"
 		last_quote_total_percent="$(echo "(($quote_total - $last_quote_total) / $last_quote_total) * 100" | bc -l | xargs printf "%.8f")"
 	fi
-	if [ ! -z "$last_base_total" ]; then
-		last_base_total_pnl="$(echo "$base_total - $last_base_total" | bc -l | xargs printf "%.8f")"
-		last_base_total_percent="$(echo "(($base_total - $last_base_total) / $last_base_total) * 100" | bc -l | xargs printf "%.8f")"
-	fi
+	#if [ ! -z "$last_base_total" ]; then
+	#	last_base_total_pnl="$(echo "$base_total - $last_base_total" | bc -l | xargs printf "%.8f")"
+	#	last_base_total_percent="$(echo "(($base_total - $last_base_total) / $last_base_total) * 100" | bc -l | xargs printf "%.8f")"
+	#fi
 	# set current totals to last_*_totals for next run
 	last_quote_total="$quote_total"
-	last_base_total="$base_total"
+	#last_base_total="$base_total"
 	# market rates percentage changes
 	if [ ! -z "$opening_market_last_price" ]; then
-		opening_market_last_price_percent="$(echo "(($market_last_price - $opening_market_last_price) / $opening_market_last_price) * 100" | bc -l | xargs printf "%.8f")"
+		if [ "$base_currency" = "$last_market_position_base_currency" ]; then
+			opening_market_last_price_percent="$(echo "(($market_last_price - $opening_market_last_price) / $opening_market_last_price) * 100" | bc -l | xargs printf "%.8f")"
+		else
+			# when base currency changes in volume based trading
+			opening_market_last_price="$market_last_price"
+			opening_market_last_price_percent="0"
+		fi
 	fi
 	if [ ! -z "$last_market_last_price" ]; then
-		last_market_last_price_percent="$(echo "(($market_last_price - $last_market_last_price) / $last_market_last_price) * 100" | bc -l | xargs printf "%.8f")"
+		if [ "$base_currency" = "$last_market_position_base_currency" ]; then
+			last_market_last_price_percent="$(echo "(($market_last_price - $last_market_last_price) / $last_market_last_price) * 100" | bc -l | xargs printf "%.8f")"
+		else
+			# when base currency changes in volume based trading
+			last_market_last_price_percent="0"
+		fi
 	fi
 	previous_market_last_price="$last_market_last_price"
 	last_market_last_price="$market_last_price"
+	last_market_position_base_currency="$base_currency"
 }
 
 trade_position_age () {
