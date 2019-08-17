@@ -280,6 +280,8 @@ EOF
 	echo "Market Ask: $market_ask $quote_currency"
 	echo "Market Bid: $market_bid $quote_currency"
 
+	# Collect data to be used in backtesting and strategy modelling
+	collect_backtest_data
 
 	# Trade decision
 	# checking trade history type is only relevant for percentage based strategy

@@ -427,6 +427,16 @@ blacklist_manager() {
 	fi
 }
 
+collect_backtest_data() {
+	# writes market ask and bid to a base currency specific file with timestamps
+	backtest_data_file="$base_currency-backtest.data"
+	backtest_data_file_header="timestamp,base_currency,market_ask,market_bid"
+	if [ ! -f "$backtest_data_file" ]; then
+		echo "$backtest_data_file_header" > "$backtest_data_file"
+	fi
+	echo "$current_time_epoch,$base_currency,$market_ask,$market_bid" >> "$backtest_data_file"
+}
+
 #self_heal() {
 	# swap action or decision if exchange allowed a dodgy trade or balance is too low on one-side
 	# if low balance
