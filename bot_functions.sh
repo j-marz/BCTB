@@ -81,9 +81,9 @@ trade_calculator() {
 			echo "Error: Unknown action: $action, in default trade scenario during trade_calculator"
 			return 1
 		fi
-	# Force coin_percentage for SMA strategy to maximise profits
-	elif [ "$strategy" = "sma.sh" ]; then
-		echo "SMA strategy trade calculator"
+	# Force coin_percentage for MA strategies to maximise profits
+	elif [ "$strategy" = "sma.sh" ] || [ "$strategy" = "dmac.sh" ]; then
+		echo "MA strategy trade calculator"
 		if [ "$action" = "Buy" ]; then
 			echo "Using $coin_percentage percent of $quote_currency balance for Buy trade"
 			get_balance "$quote_currency" || return 1
@@ -118,7 +118,7 @@ trade_calculator() {
 			fi
 			echo "Trade amount: $trade_amount $base_currency"
 		else
-			echo "Error: Unknown action: $action, in SMA strategy trade scenario during trade_calculator"
+			echo "Error: Unknown action: $action, in MA strategy trade scenario during trade_calculator"
 			return 1
 		fi
 	elif [ "$trade_history_type" != "$action" ]; then	# avoid over or under selling current trade
