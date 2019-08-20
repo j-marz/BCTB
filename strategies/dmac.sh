@@ -31,7 +31,7 @@ trade_decision() {
 	if [ "$ma_data_source" = "trades" ]; then
 		echo "Market history trade count: $market_history_trade_count"
 	elif [ "$ma_data_source" = "candles" ]; then
-		echo "Market candle interval ($candles_interval), STMA period ($stma_period) and LTMA period ($stma_period)"
+		echo "Market candle interval ($candles_interval), STMA period ($stma_period) and LTMA period ($ltma_period)"
 	fi
 	if [ "$trade_history_type" = "Buy" ]; then	# if last trade was buy, use the sell price (market_bid)
 		compare_bid_stma="$(echo "$market_ask <= $stma_average" | bc -l)"
