@@ -188,8 +188,7 @@ get_market_history() {
 	market_name_get="$(echo "$market_name" | tr "/" "_")"
 	public_api_query GetMarketHistory "$market_name_get" "$market_history_hours" > "$market_history"
 	api_response_parser "$market_history" "get_market_history" || return 1
-	market_history_prices="$(grep '^{' "$market_history" | jq -r '.Data[].Price' | head -n "$sma_period")"	# list of all buy & sell prices
-	market_history_average_price="$(echo "$market_history_prices" | jq -r -s 'add/length' | xargs printf "%.8f")"
+	market_history_prices="$(grep '^{' "$market_history" | jq -r '.Data[].Price')"
 	market_history_trade_count="$(echo "$market_history_prices" | wc -l)"
 	if [ "$market_history_trade_count" -lt "$sma_period" ]; then
 		echo "Error: Trade count ($market_history_trade_count) is less than expected SMA period ($sma_period)"
@@ -404,12 +403,8 @@ get_candles() {
 	fi
 
 	candles_open_list="$(grep '^{' "$candles" | jq -r '.Candle | .[] | .[1]')"
-	candles_open_average="$(echo "$candles_open_list" | tail -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	candles_high_list="$(grep '^{' "$candles" | jq -r '.Candle | .[] | .[2]')"
-	candles_high_average="$(echo "$candles_high_list" | tail -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	candles_low_list="$(grep '^{' "$candles" | jq -r '.Candle | .[] | .[3]')"
-	candles_low_average="$(echo "$candles_low_list" | tail -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	candles_close_list="$(grep '^{' "$candles" | jq -r '.Candle | .[] | .[4]')"
-	candles_close_average="$(echo "$candles_close_list" | tail -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 }
 

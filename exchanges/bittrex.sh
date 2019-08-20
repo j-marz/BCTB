@@ -4,8 +4,7 @@
 # ----------------------------------------
 # API documentation: https://support.bittrex.com/hc/en-us/articles/115003723911-Developer-s-Guide-API
 
-# API rate limiting: TBC?
-# All requests use GET method... seems a little dangerous...
+# API rate limiting: 60 api calls per minute - https://bittrex.github.io/api/v1-1
 
 #Bittrex v2 api doco
 #https://github.com/thebotguys/golang-bittrex-api/wiki/Bittrex-API-Reference-(Unofficial)
@@ -190,8 +189,7 @@ get_market_history() {
 	market_history="$(mktemp "$tmp_file_template")"
 	public_api_query getmarkethistory "market=$market_name" > "$market_history"
 	api_response_parser "$market_history" "get_market_history" || return 1
-	market_history_prices="$(grep '^{' "$market_history" | jq -r '.result[].Price' | head -n "$sma_period")"	# list of all buy & sell prices
-	market_history_average_price="$(echo "$market_history_prices" | jq -r -s 'add/length' | xargs printf "%.8f")"
+	market_history_prices="$(grep '^{' "$market_history" | jq -r '.result[].Price')"
 	market_history_trade_count="$(echo "$market_history_prices" | wc -l)"
 	if [ "$market_history_trade_count" -lt "$sma_period" ]; then
 		echo "Error: Trade count ($market_history_trade_count) is less than expected SMA period ($sma_period)"
@@ -404,11 +402,7 @@ get_candles() {
 	fi
 
 	candles_open_list="$(grep '^{' "$candles" | jq -r '.result[].O')"
-	candles_open_average="$(echo "$candles_open_list" | tail -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	candles_high_list="$(grep '^{' "$candles" | jq -r '.result[].H')"
-	candles_high_average="$(echo "$candles_high_list" | tail -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	candles_low_list="$(grep '^{' "$candles" | jq -r '.result[].L')"
-	candles_low_average="$(echo "$candles_low_list" | tail -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	candles_close_list="$(grep '^{' "$candles" | jq -r '.result[].C')"
-	candles_close_average="$(echo "$candles_close_list" | tail -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 }

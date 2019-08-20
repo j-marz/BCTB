@@ -6,17 +6,16 @@
 	# if the price crosses above the average, then buy
 
 # Average = (trade 1 + trade 2 + trade 3 + ... ) / number of trades
-	# calculated inside the get_market_history and/or get_candles function depending on sma_data_source
 
 # Check last trade rate + trade fee to avoid selling for less that previous buy regardless of signal
 
 trade_decision() {
 	if [ "$sma_data_source" = "trades" ]; then
 		get_market_history || return 1
-		sma_average="$market_history_average_price"
+		sma_average="$(echo "$market_history_prices" | head -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	elif [ "$sma_data_source" = "candles" ]; then
 		get_candles || return 1
-		sma_average="$candles_close_average"
+		sma_average="$(echo "$candles_close_list" | tail -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	else
 		echo "ERROR: Unknown SMA data source ($sma_data_source)"
 		send_email "ERROR: Unknown SMA data source ($sma_data_source)"
