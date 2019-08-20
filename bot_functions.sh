@@ -91,7 +91,7 @@ trade_calculator() {
 			trade_amount="$(echo "$balance_amount / $trade_rate" | bc -l | xargs printf "%.8f")"
 			echo "Trade amount: $trade_amount $base_currency"
 		elif [ "$action" = "Sell" ]; then
-			if [ "$sma_sell" = "last_trade" ]; then
+			if [ "$ma_sell" = "last_trade" ]; then
 				# use trade_history_amount instead of last_trade_amount from memory to handle cancelled trades
 				trade_amount_with_fee="$(echo "$trade_history_amount + ($trade_history_amount * ($trade_fee / 100))" | bc -l | xargs printf "%.8f")"
 				trade_amount_without_fee="$(echo "$trade_history_amount - ($trade_history_amount * ($trade_fee / 100))" | bc -l | xargs printf "%.8f")"
@@ -103,8 +103,8 @@ trade_calculator() {
 					echo "Using last trade amount of from exchange history minus fee amount for Sell trade"
 					trade_amount="$trade_amount_without_fee"
 				fi
-			elif [ "$sma_sell" = "coin_percentage" ]; then
-				# use coin_percentage type for sma_sell
+			elif [ "$ma_sell" = "coin_percentage" ]; then
+				# use coin_percentage type for ma_sell
 				get_balance "$base_currency" || return 1
 				balance_amount="$(echo "$available_balance * ($coin_percentage / 100)" | bc -l | xargs printf "%.8f")"
 				trade_amount="$balance_amount"

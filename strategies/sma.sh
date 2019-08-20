@@ -10,22 +10,22 @@
 # Check last trade rate + trade fee to avoid selling for less that previous buy regardless of signal
 
 trade_decision() {
-	if [ "$sma_data_source" = "trades" ]; then
+	if [ "$ma_data_source" = "trades" ]; then
 		get_market_history || return 1
 		sma_average="$(echo "$market_history_prices" | head -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
-	elif [ "$sma_data_source" = "candles" ]; then
+	elif [ "$ma_data_source" = "candles" ]; then
 		get_candles || return 1
 		sma_average="$(echo "$candles_close_list" | tail -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	else
-		echo "ERROR: Unknown SMA data source ($sma_data_source)"
-		send_email "ERROR: Unknown SMA data source ($sma_data_source)"
+		echo "ERROR: Unknown SMA data source ($ma_data_source)"
+		send_email "ERROR: Unknown SMA data source ($ma_data_source)"
 		return 1
 	fi
 	echo "Last trade rate: $trade_history_rate $quote_currency"
-	echo "Market history average price: $sma_average (source: $sma_data_source)"
-	if [ "$sma_data_source" = "trades" ]; then
+	echo "Market history average price: $sma_average (source: $ma_data_source)"
+	if [ "$ma_data_source" = "trades" ]; then
 		echo "Market history trade count: $market_history_trade_count"
-	elif [ "$sma_data_source" = "candles" ]; then
+	elif [ "$ma_data_source" = "candles" ]; then
 		echo "Market candle interval ($candles_interval) and SMA period ($sma_period)"
 	fi
 	if [ "$trade_history_type" = "Buy" ]; then
@@ -37,7 +37,7 @@ trade_decision() {
 			# might also cause some trades to end early and not make profit?
 		bull_trade_compare="$(echo "$market_bid > (($trade_history_rate * ($trade_fee / 100)) + $trade_history_rate + ($market_bid * ($trade_fee / 100)))" | bc -l)"
 		if [ "$bull_market_compare" -eq 1 ]; then
-			echo "Bull: Market bid ($market_bid) > Market history ($sma_data_source) average ($sma_average)"
+			echo "Bull: Market bid ($market_bid) > Market history ($ma_data_source) average ($sma_average)"
 			if [ "$bull_trade_compare" -eq 1 ]; then	# In case SMA signal alone causes a loss
 				echo "Bull: Market bid ($market_bid) > Last $trade_history_type trade ($trade_history_rate)"
 				echo "SELL!"
@@ -74,7 +74,7 @@ trade_decision() {
 		#bear_trade_compare="$(echo "$market_ask < (($trade_history_rate * ($trade_fee / 100)) + $trade_history_rate)" | bc -l)"
 		###### maybe we should check if ask is lower than last sell trade rate?
 		if [ "$bear_market_compare" -eq 1 ]; then
-			echo "Bear: Market ask ($market_ask) < Market history ($sma_data_source) average ($sma_average)"
+			echo "Bear: Market ask ($market_ask) < Market history ($ma_data_source) average ($sma_average)"
 			#if [ "$bear_trade_compare" -eq 1 ]; then	# In case SMA signal alone causes a loss
 				#echo "Bear: Market ask ($market_ask) < Last $trade_history_type trade ($trade_history_rate)"
 				echo "BUY!"
