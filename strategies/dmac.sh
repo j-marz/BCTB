@@ -34,10 +34,10 @@ trade_decision() {
 		echo "Market candle interval ($candles_interval), STMA period ($stma_period) and LTMA period ($ltma_period)"
 	fi
 	if [ "$trade_history_type" = "Buy" ]; then	# if last trade was buy, use the sell price (market_bid)
-		compare_bid_stma="$(echo "$market_ask <= $stma_average" | bc -l)"
-		compare_bid_ltma="$(echo "$market_ask > $ltma_average" | bc -l)"
+		compare_bid_stma="$(echo "$market_bid <= $stma_average" | bc -l)"
+		compare_bid_ltma="$(echo "$market_bid > $ltma_average" | bc -l)"
 		if [ "$compare_bid_stma" -eq 1 ] && [ "$compare_bid_ltma" -eq 1 ]; then
-			echo "Sell Signal: Market ask ($market_bid) <= Market history ($ma_data_source) STMA ($stma_average) and > LTMA ($ltma_average)"
+			echo "Sell Signal: Market bid ($market_bid) <= Market history ($ma_data_source) STMA ($stma_average) and > LTMA ($ltma_average)"
 			dmac_profit_check="$(echo "$market_bid > (($trade_history_rate * ($trade_fee / 100)) + $trade_history_rate + ($market_bid * ($trade_fee / 100)))" | bc -l)"
 			if [ "$dmac_profit_check" -eq 1 ]; then	# In case MA signal alone causes a loss
 				echo "Profit check: Market bid ($market_bid) > Last $trade_history_type trade ($trade_history_rate)"
