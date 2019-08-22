@@ -110,6 +110,8 @@ Base balance: $base_balance $base_currency
 Quote balance: $quote_balance $quote_currency
 Last market price: $market_last_price $quote_currency (1 $base_currency)
 Total balance in $quote_currency: $quote_total $quote_currency
+---
+Strategy: $strategy
 EOF
 )"
 echo "$opening_balance"
