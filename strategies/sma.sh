@@ -32,9 +32,6 @@ trade_decision() {
 		# if last trade was buy, use the sell price (market_bid)
 		bull_market_compare="$(echo "$market_bid > $sma_average" | bc -l)"
 		# must be greater than previous trade rate + previous trade fee + current trade fee
-		#bull_trade_compare="$(echo "$market_bid > (($trade_history_rate * ($trade_fee / 100)) + $trade_history_rate)" | bc -l)"
-		###### maybe should change to >= so some bad positions can exit without loss and bot can continue, instead of waiting days for a return?
-			# might also cause some trades to end early and not make profit?
 		bull_trade_compare="$(echo "$market_bid > (($trade_history_rate * ($trade_fee / 100)) + $trade_history_rate + ($market_bid * ($trade_fee / 100)))" | bc -l)"
 		if [ "$bull_market_compare" -eq 1 ]; then
 			echo "Bull: Market bid ($market_bid) > Market history ($ma_data_source) average ($sma_average)"
@@ -71,20 +68,11 @@ trade_decision() {
 	elif [ "$trade_history_type" = "Sell" ]; then
 		# if last trade was sell, use the buy price (market_ask)
 		bear_market_compare="$(echo "$market_ask < $sma_average" | bc -l)"
-		#bear_trade_compare="$(echo "$market_ask < (($trade_history_rate * ($trade_fee / 100)) + $trade_history_rate)" | bc -l)"
-		###### maybe we should check if ask is lower than last sell trade rate?
 		if [ "$bear_market_compare" -eq 1 ]; then
 			echo "Bear: Market ask ($market_ask) < Market history ($ma_data_source) average ($sma_average)"
-			#if [ "$bear_trade_compare" -eq 1 ]; then	# In case SMA signal alone causes a loss
-				#echo "Bear: Market ask ($market_ask) < Last $trade_history_type trade ($trade_history_rate)"
-				echo "BUY!"
-				trade_rate="$market_ask"
-				action="Buy"
-			#else
-				#echo "Trade would result in a loss using SMA signal alone"
-				#echo "HOLD!"
-				#action="Hold"
-			#fi
+			echo "BUY!"
+			trade_rate="$market_ask"
+			action="Buy"
 		else
 			echo "No SMA cross-overs detected"
 			echo "HOLD!"
