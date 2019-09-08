@@ -317,9 +317,17 @@ EOF
 			trade_rate="$market_bid"
 			echo "Default trade set to $action"
 		else
-			action="Buy"
-			trade_rate="$market_ask"
-			echo "Default trade set to $action"
+			if [ "$strategy" = "percentage.sh" ]; then
+				# doesn't use market history, so buy immediately
+				action="Buy"
+				trade_rate="$market_ask"
+				echo "Default trade set to $action"
+			else
+				# use strategy signal to buy to avoid buying at height of market
+				trade_history_type="Sell"	# fake historical trade
+				echo "Forcing trade history type to Sell and waiting for Buy signal from $strategy strategy"
+				trade_decision || continue
+			fi
 		fi
 	fi
 
