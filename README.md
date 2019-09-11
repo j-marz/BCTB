@@ -8,7 +8,8 @@ Written entirely in Bash, leveraging common linux tools (curl jq bc tr)
 * Bittrex
 
 ## Strategies
-* SMA
+* SMA (Simple Moving Average)
+* DMAC (Double Moving Average Crossover)
 * Percentage (up/down)
 
 ## Dependencies
