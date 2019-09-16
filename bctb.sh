@@ -177,6 +177,9 @@ Profit and Loss comparison:
 Since bot started $quote_currency: $opening_quote_total_pnl ($opening_quote_total_percent % diff)
 Last $market_position_updates hours $quote_currency: $last_quote_total_pnl ($last_quote_total_percent % diff)
 ---
+Last Trade:
+$trade_history_type @ $trade_history_rate $quote_currency on $trade_history_timestamp
+---
 Bot running since $bot_start_time_long
 Bot running for $bot_uptime_days days ($bot_uptime_hours hours)
 ---
