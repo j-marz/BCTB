@@ -359,18 +359,21 @@ blacklist_manager() {
 	blacklist_expiry_hours="$3"
 	blacklist_reason="$4"
 	[ -z "$blacklist_expiry_hours" ] && blacklist_expiry_hours="1"	# default to 1 hour if arg not passed
-	blacklist_max_age="$((60 * 60 * blacklist_expiry_hours))"	# in seconds
+	blacklist_timestamp="$(date +%s)"	# in seconds
+	blacklist_max_age="$((60 * 60 * blacklist_expiry_hours + blacklist_timestamp))"	# in seconds
 	blacklist_temp="$(mktemp "$tmp_file_template")"
+	# CSV structure: market, added timestamp, expiry timestamp
 	if [ "$blacklist_method" = "add" ]; then
 		if [ ! -f "$blacklisted_markets" ]; then
-			echo "$blacklist_market,$(date +%s)" >> "$blacklisted_markets"
+			echo "$blacklist_market,$blacklist_timestamp,$blacklist_max_age" >> "$blacklisted_markets"
+			send_email "INFO: $blacklist_market added to blacklist" "Market: $blacklist_market \nMarket status: $trade_pair_status \nBlacklist reason: $blacklist_reason \nBlacklist expiry (hours): $blacklist_expiry_hours"
 		else
 			if grep -q "$blacklist_market" "$blacklisted_markets"; then
 				echo "$blacklist_market already blacklisted"
 			else
-				echo "$blacklist_market,$(date +%s)" >> "$blacklisted_markets"
+				echo "$blacklist_market,$blacklist_timestamp,$blacklist_max_age" >> "$blacklisted_markets"
 				echo "$blacklist_market added to blacklist"
-				send_email "INFO: $blacklist_market added to blacklist" "Market: $blacklist_market \nMarket status: $trade_pair_status \nBlacklist reason: $blacklist_reason"
+				send_email "INFO: $blacklist_market added to blacklist" "Market: $blacklist_market \nMarket status: $trade_pair_status \nBlacklist reason: $blacklist_reason \nBlacklist expiry (hours): $blacklist_expiry_hours"
 			fi
 		fi
 	elif [ "$blacklist_method" = "update" ]; then
@@ -383,14 +386,15 @@ blacklist_manager() {
 		else
 			while read -r line; do
 				blacklisted_market="$(echo "$line" | awk -F "," '{print $1}')"
-				blacklist_market_timestamp="$(echo "$line" | awk -F "," '{print $2}')"
-				blacklist_age="$(($(date +%s) - blacklist_market_timestamp))"
-				if [ "$blacklist_age" -lt "$blacklist_max_age" ]; then
+				blacklisted_add_timestamp="$(echo "$line" | awk -F "," '{print $2}')"
+				blacklisted_expiry_timestamp="$(echo "$line" | awk -F "," '{print $3}')"
+				blacklisted_age="$(("$blacklisted_expiry_timestamp" - "$blacklisted_add_timestamp" / 60 / 60))"
+				if [ "$(date +%s)" -lt "$blacklisted_expiry_timestamp" ]; then
 					# expired markets won't be written to temp file
 					echo "$line" >> "$blacklist_temp"
 				else
 					echo "$blacklisted_market removed from $blacklisted_markets"
-					send_email "INFO: $blacklisted_market removed from blacklist" "Market: $blacklisted_market \nBlacklist age: $blacklist_age"
+					send_email "INFO: $blacklisted_market removed from blacklist" "Market: $blacklisted_market \nBlacklist age: $blacklisted_age"
 				fi
 			done < "$blacklisted_markets"
 			# overwrite blacklist
