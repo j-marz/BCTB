@@ -204,8 +204,8 @@ EOF
 	# Check open orders
 	get_open_orders || continue
 	if [ "$no_open_orders" = "true" ]; then
-		echo "No open orders in exchange and/or last trade was successful"
-		echo "Start a new trade :)"
+		#echo "No open orders in exchange and/or last trade was successful"
+		echo "Hunt for a new trade!"
 		#Check trade history
 	elif [ "$no_open_orders" = "false" ]; then
 		echo "Open order found - $open_order_id - waiting up-to 10 mins in case trading is slow"	# increased from 300 to 600 second to support larger trade volumes
@@ -268,13 +268,14 @@ EOF
 		no_history=""	#unset variable
 	else
 		# display trade history details
-		echo "Trade history"
-		echo "id: $trade_history_id"
-		echo "type: $trade_history_type"
-		echo "cost: $trade_history_cost $quote_currency"
-		echo "rate: $trade_history_rate $quote_currency"
-		echo "amount: $trade_history_amount $base_currency"
-		echo "timestamp: $trade_history_timestamp"
+		#echo "Trade history"
+		#echo "id: $trade_history_id"
+		#echo "type: $trade_history_type"
+		#echo "cost: $trade_history_cost $quote_currency"
+		#echo "rate: $trade_history_rate $quote_currency"
+		#echo "amount: $trade_history_amount $base_currency"
+		#echo "timestamp: $trade_history_timestamp"
+		echo "Trade history: $trade_history_type @ $trade_history_timestamp"
 	fi
 
 	# Get the current market prices
@@ -288,24 +289,28 @@ EOF
 	# Trade decision
 	# checking trade history type is only relevant for percentage based strategy
 	if [ "$trade_history_type" = "Buy" ]; then
-		echo "Last trade was Buy, so hopefully next trade is Sell"
-		trend_percentage_increase="Buy"
-		# count consecutive trades (long trends)
-		if [ "$buy_count" -lt 2 ]; then
-			buy_count="2"
+		if [ "$strategy" = "percentage.sh" ]; then 	# should move this to percentage.sh source file
+			echo "Last trade was Buy, so hopefully next trade is Sell"
+			trend_percentage_increase="Buy"
+			# count consecutive trades (long trends)
+			if [ "$buy_count" -lt 2 ]; then
+				buy_count="2"
+			fi
+			echo "Buy trade count: $buy_count"
+			echo "Sell trade count: $sell_count"	# more for log debugging
 		fi
-		echo "Buy trade count: $buy_count"
-		echo "Sell trade count: $sell_count"	# more for log debugging
 		trade_decision || continue
 	elif [ "$trade_history_type" = "Sell" ]; then
-		echo "Last trade was Sell, so hopefully next trade is Buy"
-		trend_percentage_increase="Sell"
-		# count consecutive trades (long trends)
-		if [ "$sell_count" -lt 2 ]; then
-			sell_count="2"
+		if [ "$strategy" = "percentage.sh" ]; then 	# should move this to percentage.sh source file
+			echo "Last trade was Sell, so hopefully next trade is Buy"
+			trend_percentage_increase="Sell"
+			# count consecutive trades (long trends)
+			if [ "$sell_count" -lt 2 ]; then
+				sell_count="2"
+			fi
+			echo "Sell trade count: $sell_count"
+			echo "Buy trade count: $buy_count"	# more for log debugging
 		fi
-		echo "Sell trade count: $sell_count"
-		echo "Buy trade count: $buy_count"	# more for log debugging
 		trade_decision || continue
 	else
 		echo "Could not determine last trade type..."
@@ -317,7 +322,7 @@ EOF
 			trade_rate="$market_bid"
 			echo "Default trade set to $action"
 		else
-			if [ "$strategy" = "percentage.sh" ]; then
+			if [ "$strategy" = "percentage.sh" ]; then 	# should move this to percentage.sh source file
 				# doesn't use market history, so buy immediately
 				action="Buy"
 				trade_rate="$market_ask"
