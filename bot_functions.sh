@@ -442,6 +442,22 @@ collect_backtest_data() {
 	echo "$backtest_data_time_epoch,$base_currency,$market_ask,$market_bid" >> "$backtest_data_file"
 }
 
+take_profit_check() {
+	take_profit_percentage_calc="$(echo "(($market_bid - $trade_history_rate) / $trade_history_rate) * 100" | bc -l | xargs printf "%.8f")"
+	take_profit_percentage_compare="$(echo "$take_profit_percentage_calc >= $take_profit_percentage" | bc -l)"
+	if [ "$take_profit_percentage_compare" -eq 1 ]; then
+		echo "Take profit triggered - market bid up $take_profit_percentage_calc %"
+		send_email "INFO: Take profit percentage triggered for $market_name" "Profit percentage: $take_profit_percentage_calc %"
+		take_profit="true"
+	elif [ "$take_profit_percentage_compare" -eq 0 ]; then
+		take_profit="false"
+	else
+		echo "Error: can't compare take profit percentage"
+		sleep 5
+		return 1
+	fi
+}
+
 #self_heal() {
 	# swap action or decision if exchange allowed a dodgy trade or balance is too low on one-side
 	# if low balance

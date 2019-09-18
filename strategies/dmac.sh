@@ -54,8 +54,14 @@ trade_decision() {
 			echo "HOLD!"
 			action="Hold"
 		fi
-		# Override hold action if position expires or stop loss sell enforced
+		# Override hold action if position expires, take profit or stop loss sell triggered
 		if [ "$action" = "Hold" ]; then
+			take_profit_check || return 1
+			if [ "$take_profit" = "true" ]; then
+				echo "SELL!"
+				trade_rate="$market_bid"
+				action="Sell"
+			fi
 			trade_position_age || return 1
 			if [ "$trade_position_expired" = "true" ]; then
 				echo "SELL!"
