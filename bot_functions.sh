@@ -341,8 +341,8 @@ stop_loss() {
 		fi
 
 		# blacklist markets with extreme volatility for 24 hours
-		if [ "$previous_market_name" != "$market_name" ]; then
-			# reset counter when market changes
+		if [ "$base_currency" = "volume" ] && [ "$previous_market_name" != "$market_name" ]; then
+			# reset counter when market changes in dynamic volume based trading config
 			stop_loss_counter="0"
 		fi
 		if [ "$stop_loss_sell" = "true" ]; then
