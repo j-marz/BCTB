@@ -355,10 +355,10 @@ get_trade_history() {
 
 # Get candles for long term moving average calcs
 get_candles() {
-#URL: https://international.bittrex.com/Api/v2.0/pub/market/GetTicks
+#URL: https://global.bittrex.com/Api/v2.0/pub/market/GetTicks
 #METHOD: GET
 #PARAMS: marketName:string, tickInterval:string, _:int
-#EXAMPLE: https://international.bittrex.com/Api/v2.0/pub/market/GetTicks?marketName=BTC-CVC&tickInterval=thirtyMin&_=1500915289433
+#EXAMPLE: https://global.bittrex.com/Api/v2.0/pub/market/GetTicks?marketName=BTC-CVC&tickInterval=thirtyMin&_=1500915289433
 #COMMENT: Probably _ is a timestamp. tickInterval must be in [“oneMin”, “fiveMin”, “thirtyMin”, “hour”, “day”].
 
 # _ timestamp param doesn't appear to be required for requests
@@ -383,8 +383,8 @@ get_candles() {
 		dataGroup="day"			# 1 day
 	fi
 	epoch_milliseconds="$(date +%s%3N)"
-	candles_url="https://international.bittrex.com/Api/v2.0/pub/market/GetTicks?marketName=$market_name&tickInterval=$dataGroup&_=$epoch_milliseconds"
-	#candles_url="https://international.bittrex.com/Api/v2.0/pub/market/GetTicks?marketName=$market_name&tickInterval=$dataGroup"
+	candles_url="https://global.bittrex.com/Api/v2.0/pub/market/GetTicks?marketName=$market_name&tickInterval=$dataGroup&_=$epoch_milliseconds"
+	#candles_url="https://global.bittrex.com/Api/v2.0/pub/market/GetTicks?marketName=$market_name&tickInterval=$dataGroup"
 
 	curl \
 	--silent \
