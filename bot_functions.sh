@@ -388,7 +388,7 @@ blacklist_manager() {
 				blacklisted_market="$(echo "$line" | awk -F "," '{print $1}')"
 				blacklisted_add_timestamp="$(echo "$line" | awk -F "," '{print $2}')"
 				blacklisted_expiry_timestamp="$(echo "$line" | awk -F "," '{print $3}')"
-				blacklisted_age="$(("$blacklisted_expiry_timestamp" - "$blacklisted_add_timestamp" / 60 / 60))"
+				blacklisted_age="$(($blacklisted_expiry_timestamp - $blacklisted_add_timestamp / 60 / 60))"
 				if [ "$(date +%s)" -lt "$blacklisted_expiry_timestamp" ]; then
 					# expired markets won't be written to temp file
 					echo "$line" >> "$blacklist_temp"
