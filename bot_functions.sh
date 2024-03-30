@@ -12,7 +12,7 @@ send_email() {
 	echo -e "$email_body \n\nTimestamp: $email_timestamp" | mail -s "$email_subject" \
 		"$attach_switch" "$email_attachment" \
 		"$recipient_email" \
-		-a From:"BCTB - $exchange - $base_currency" \
+		-a From:"BCTB-$exchange-$base_currency" \
 		-a Content-Type:"text/plain"
 }
 
@@ -82,7 +82,7 @@ trade_calculator() {
 			return 1
 		fi
 	# Force coin_percentage for MA strategies to maximise profits
-	elif [ "$strategy" = "sma.sh" ] || [ "$strategy" = "dmac.sh" ]; then
+	elif [ "$strategy" = "sma.sh" ] || [ "$strategy" = "dmac.sh" ] || [ "$strategy" = "tmac.sh" ]; then
 		echo "MA strategy trade calculator"
 		if [ "$action" = "Buy" ]; then
 			echo "Using $coin_percentage percent of $quote_currency balance for Buy trade"
@@ -112,9 +112,14 @@ trade_calculator() {
 			else
 				# default - use maximum amount for trade
 				get_balance "$base_currency" || return 1
-				trade_amount_without_fee="$(echo "$available_balance - ($available_balance * ($trade_fee / 100))" | bc -l | xargs printf "%.8f")"
-				trade_amount="$trade_amount_without_fee"
-				echo "Using max balance of $base_currency balance minus fee amount for Sell trade"
+				if [ "$sell_amount_requires_fee" = "false" ]; then
+					trade_amount="$available_balance"
+					echo "Using max balance of $base_currency balance for Sell trade ($available_balance)"
+				else
+					trade_amount_without_fee="$(echo "$available_balance - ($available_balance * ($trade_fee / 100))" | bc -l | xargs printf "%.8f")"
+					trade_amount="$trade_amount_without_fee"
+					echo "Using max balance of $base_currency balance minus fee amount for Sell trade"
+				fi
 			fi
 			echo "Trade amount: $trade_amount $base_currency"
 		else
@@ -443,6 +448,8 @@ collect_backtest_data() {
 }
 
 take_profit_check() {
+	# this doesn't take fees into account - fee percentage is expected to be factored into take_profit_percentage config var
+	# ToDo: should probably perform the fee calc here and make the config more simple (profit after fee loss)
 	take_profit_percentage_calc="$(echo "(($market_bid - $trade_history_rate) / $trade_history_rate) * 100" | bc -l | xargs printf "%.8f")"
 	take_profit_percentage_compare="$(echo "$take_profit_percentage_calc >= $take_profit_percentage" | bc -l)"
 	if [ "$take_profit_percentage_compare" -eq 1 ]; then
@@ -458,9 +465,131 @@ take_profit_check() {
 	fi
 }
 
+trading_action(){
+	# Moved from main script so this can be used in backtesting scripts as well
+	# checking trade history type is only relevant for percentage based strategy
+	if [ "$trade_history_type" = "Buy" ]; then
+		if [ "$strategy" = "percentage.sh" ]; then 	# should move this to percentage.sh source file
+			echo "Last trade was Buy, so hopefully next trade is Sell"
+			trend_percentage_increase="Buy"
+			# count consecutive trades (long trends)
+			if [ "$buy_count" -lt 2 ]; then
+				buy_count="2"
+			fi
+			echo "Buy trade count: $buy_count"
+			echo "Sell trade count: $sell_count"	# more for log debugging
+		fi
+		trade_decision || return 1
+	elif [ "$trade_history_type" = "Sell" ]; then
+		if [ "$strategy" = "percentage.sh" ]; then 	# should move this to percentage.sh source file
+			echo "Last trade was Sell, so hopefully next trade is Buy"
+			trend_percentage_increase="Sell"
+			# count consecutive trades (long trends)
+			if [ "$sell_count" -lt 2 ]; then
+				sell_count="2"
+			fi
+			echo "Sell trade count: $sell_count"
+			echo "Buy trade count: $buy_count"	# more for log debugging
+		fi
+		trade_decision || return 1
+	else
+		echo "Could not determine last trade type..."
+		echo "Checking balances to decide on default trade action..."
+		quote_balance_in_base="$(echo "$quote_balance / $market_last_price" | bc -l | xargs printf "%.8f")"
+		default_trade_balance_compare="$(echo "$base_balance > $quote_balance_in_base" | bc -l)"
+		if [ "$default_trade_balance_compare" -eq 1 ]; then
+			action="Sell"
+			trade_rate="$market_bid"
+			echo "Default trade set to $action"
+		else
+			if [ "$strategy" = "percentage.sh" ]; then 	# should move this to percentage.sh source file
+				# doesn't use market history, so buy immediately
+				action="Buy"
+				trade_rate="$market_ask"
+				echo "Default trade set to $action"
+			else
+				# use strategy signal to buy to avoid buying at height of market
+				trade_history_type="Sell"	# fake historical trade
+				echo "Forcing trade history type to Sell and waiting for Buy signal from $strategy strategy"
+				trade_decision || return 1
+			fi
+		fi
+	fi
+
+	# Trading
+	if [ "$action" = "Buy" ]; then
+		if [ "$low_buy_balance" = "true" ]; then
+			echo "action is $action and low_buy_balance is $low_buy_balance, so exitting current trade loop"
+			echo "sleeping for 60 seconds"
+			sleep 60
+			return 1	# restart main while loop
+		fi
+		trade_type="Buy"
+		get_balance "$quote_currency" || return 1
+		echo "Balance: $available_balance $currency"
+		currency_to_trade="$quote_currency"
+		trade_calculator || return 1
+		submit_trade_order || return 1
+		echo "$market_name" > "$restore_market_name"
+	elif [ "$action" = "Sell" ]; then
+		if [ "$low_sell_balance" = "true" ]; then
+			echo "action is $action and low_sell_balance is $low_sell_balance, so exitting current trade loop"
+			echo "sleeping for 60 seconds"
+			sleep 60
+			return 1	# restart main while loop
+		fi
+		trade_type="Sell"
+		get_balance "$base_currency" || return 1
+		echo "Balance: $available_balance $currency"
+		currency_to_trade="$base_currency"
+		trade_calculator || return 1
+		submit_trade_order || return 1
+	elif [ "$action" = "Hold" ]; then
+		echo "Trading thresholds not met"
+		echo "Holding on until next run"
+	else
+		echo "Error: unknown action..."
+	fi
+}
+
+
 #self_heal() {
 	# swap action or decision if exchange allowed a dodgy trade or balance is too low on one-side
 	# if low balance
 		# check opposite balance
 			# if greater than min trade, perform trade and remove low balance variable
 #}
+
+
+
+# push data into influxdb to build graphs and alerts
+publish_to_influxdb() {
+	# arg1 balance|trade
+	# arg2 currency|direction
+	# arg3 amount_in_btc|buy/sell
+
+	market_position
+
+	base_balance_in_quote_currency="$(echo "$base_balance * $market_last_price" | bc -l | xargs printf "%.8f")"
+
+	publish_base_balance="balance,holding=$base_currency value=$base_balance_in_quote_currency"
+	publish_quote_balance="balance,holding=$quote_currency value=$quote_balance"
+	publish_total_balance="balance,holding=total_holiding value=$quote_total"
+
+	influxdb_data=("$publish_base_balance" "$publish_quote_balance" "$publish_total_balance")
+
+	# only publish to influxdb if hostname set
+		# should probably check all influxdb variables here
+	if [ -n "$influxdb_host" ]; then
+		for data in "${influxdb_data[@]}"; do
+			# push data to InfluxDB
+			curl \
+			-i \
+			--silent \
+			--request POST \
+			--url "http://$influxdb_host:$influxdb_port/write?db=$influxdb_database" \
+			-u "$influxdb_user:$influxdb_pass" \
+			--data-binary "$data" || return 1
+		done
+	fi
+}

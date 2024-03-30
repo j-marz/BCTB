@@ -129,7 +129,15 @@ do
 	echo ""
 	echo "---------------------"
 
+	# publish latest data to influxdb
+	#publish_to_influxdb || continue
+	publish_to_influxdb	# don't break loop if this fails
+
 	blacklist_manager "update" || continue
+
+### NEED TO CHECK IF STATIC MARKET HAS BEEN BLACKLISTED HERE
+	## HOW TO CHECK IF OPEN ORDER EXISTS THOUGH?
+	## maybe add else statement in the volume based trading below?
 
 	# Volume based base currency (alt coin) selection
 	if [ "$dynamic_base" = "true" ]; then
@@ -289,94 +297,12 @@ EOF
 	# Collect data to be used in backtesting and strategy modelling
 	collect_backtest_data
 
-	# Trade decision
-	# checking trade history type is only relevant for percentage based strategy
-	if [ "$trade_history_type" = "Buy" ]; then
-		if [ "$strategy" = "percentage.sh" ]; then 	# should move this to percentage.sh source file
-			echo "Last trade was Buy, so hopefully next trade is Sell"
-			trend_percentage_increase="Buy"
-			# count consecutive trades (long trends)
-			if [ "$buy_count" -lt 2 ]; then
-				buy_count="2"
-			fi
-			echo "Buy trade count: $buy_count"
-			echo "Sell trade count: $sell_count"	# more for log debugging
-		fi
-		trade_decision || continue
-	elif [ "$trade_history_type" = "Sell" ]; then
-		if [ "$strategy" = "percentage.sh" ]; then 	# should move this to percentage.sh source file
-			echo "Last trade was Sell, so hopefully next trade is Buy"
-			trend_percentage_increase="Sell"
-			# count consecutive trades (long trends)
-			if [ "$sell_count" -lt 2 ]; then
-				sell_count="2"
-			fi
-			echo "Sell trade count: $sell_count"
-			echo "Buy trade count: $buy_count"	# more for log debugging
-		fi
-		trade_decision || continue
-	else
-		echo "Could not determine last trade type..."
-		echo "Checking balances to decide on default trade action..."
-		quote_balance_in_base="$(echo "$quote_balance / $market_last_price" | bc -l | xargs printf "%.8f")"
-		default_trade_balance_compare="$(echo "$base_balance > $quote_balance_in_base" | bc -l)"
-		if [ "$default_trade_balance_compare" -eq 1 ]; then
-			action="Sell"
-			trade_rate="$market_bid"
-			echo "Default trade set to $action"
-		else
-			if [ "$strategy" = "percentage.sh" ]; then 	# should move this to percentage.sh source file
-				# doesn't use market history, so buy immediately
-				action="Buy"
-				trade_rate="$market_ask"
-				echo "Default trade set to $action"
-			else
-				# use strategy signal to buy to avoid buying at height of market
-				trade_history_type="Sell"	# fake historical trade
-				echo "Forcing trade history type to Sell and waiting for Buy signal from $strategy strategy"
-				trade_decision || continue
-			fi
-		fi
-	fi
-
-	# Trading
-	if [ "$action" = "Buy" ]; then
-		if [ "$low_buy_balance" = "true" ]; then
-			echo "action is $action and low_buy_balance is $low_buy_balance, so exitting current trade loop"
-			echo "sleeping for 60 seconds"
-			sleep 60
-			continue	# restart main while loop
-		fi
-		trade_type="Buy"
-		get_balance "$quote_currency" || continue
-		echo "Balance: $available_balance $currency"
-		currency_to_trade="$quote_currency"
-		trade_calculator || continue
-		submit_trade_order || continue
-		echo "$market_name" > "$restore_market_name"
-	elif [ "$action" = "Sell" ]; then
-		if [ "$low_sell_balance" = "true" ]; then
-			echo "action is $action and low_sell_balance is $low_sell_balance, so exitting current trade loop"
-			echo "sleeping for 60 seconds"
-			sleep 60
-			continue	# restart main while loop
-		fi
-		trade_type="Sell"
-		get_balance "$base_currency" || continue
-		echo "Balance: $available_balance $currency"
-		currency_to_trade="$base_currency"
-		trade_calculator || continue
-		submit_trade_order || continue
-	elif [ "$action" = "Hold" ]; then
-		echo "Trading thresholds not met"
-		echo "Holding on until next run"
-	else
-		echo "Error: unknown action..."
-	fi
+	# Trading logic
+	trading_action || continue
 
 	# clean up temp files
 	cleanup
 
-	# sleep for 5 seconds between trades to avoid API rate limiting
-	sleep 5
+	# sleep for $rate_limit_sleep seconds between trades to avoid API rate limiting (e.g. 60 calls per min on bittrex)
+	sleep "$rate_limit_sleep"
 done 	# end while loop
