@@ -10,6 +10,10 @@
 #https://github.com/thebotguys/golang-bittrex-api/wiki/Bittrex-API-Reference-(Unofficial)
 
 
+## NEED TO UPGRADE TO API V3 - V1.1 NO LONGER SUPPORTED SINCE 3/3/2022
+## https://bittrex.github.io/api/v3 
+
+
 # Variables
 
 market_name="$quote_currency-$base_currency"	# must be upper case in config - should validate this!
