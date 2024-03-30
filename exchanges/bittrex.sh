@@ -10,8 +10,8 @@
 #https://github.com/thebotguys/golang-bittrex-api/wiki/Bittrex-API-Reference-(Unofficial)
 
 
-## NEED TO UPGRADE TO API V3 - V1.1 NO LONGER SUPPORTED SINCE 3/3/2022
-## https://bittrex.github.io/api/v3 
+## NEED TO USE V3 API - V1.1 NO LONGER SUPPORTED SINCE 3/3/2022 - https://bittrex.github.io/api/v3 
+## IMPORT bittrex_v3.sh exchange instead!
 
 
 # Variables

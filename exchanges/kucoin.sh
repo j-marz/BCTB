@@ -4,16 +4,16 @@
 # ----------------------------------------
 # API documentation:  https://www.kucoin.com/docs/beginners/introduction
 
-# API rate limiting: 2000 api calls per 30 seconds
+# API rate limiting: 2000 api calls per 30 seconds, therefore recommend rate_limit_sleep="20" in config
 
 # Variables
-market_name="$base_currency-$quote_currency"	# must be upper case in config - should validate this!
+market_name="$base_currency-$quote_currency"	# must be upper case in config - TODO: should validate or force upper from config import
 sell_amount_requires_fee="false"	# set to false if exchange handles fee math on sell orders
 
 # Functions
 
 private_api_query() {
-# HTTP 1.1 forced for kucoin as i was receiving HTTP status 000 errors when http2 was forced
+# HTTP 1.1 forced for kucoin as i was receiving HTTP status 000 errors when http2 was used...
 # -binary (utf-8 encoding) required for hmac with kucoin
 	endpoint="/api/v1/$1"	# api version included in endpoint as it's needed in pre_sign variable
 	http_method="$2"
@@ -195,7 +195,7 @@ get_trade_pairs() {
 	fi
 }
 
-# GetMarketOrders - needs to be ported to Bittrex API
+# GetMarketOrders - not used, so not ported to kucoin
 #get_market_orders() {
 	#market_orders_limit="10"	# number of open buy and sell market orders to retrieve
 	#market_orders="$(mktemp "$tmp_file_template")"
@@ -279,6 +279,7 @@ get_candles() {
 
 # Private API calls
 
+# tested
 #https://www.kucoin.com/docs/rest/account/basic-info/get-account-list-spot-margin-trade_hf
 get_balance() {
 	currency="$1"
@@ -302,6 +303,7 @@ get_balance() {
 	fi
 }
 
+# tested
 # https://www.kucoin.com/docs/rest/spot-trading/orders/get-order-list
 get_open_orders() {
 	open_orders="$(mktemp "$tmp_file_template")"
@@ -322,6 +324,7 @@ get_open_orders() {
 	fi
 }
 
+# tested
 # https://www.kucoin.com/docs/rest/spot-trading/orders/place-order
 submit_trade_order() {
 	submit_trade="$(mktemp "$tmp_file_template")"
@@ -347,7 +350,7 @@ submit_trade_order() {
 	#last_trade_rate="$trade_rate"	# not used 
 	last_trade_amount="$trade_amount"
 	#filled_orders="$(grep '{' "$submit_trade" | jq -r '.fillQuantity')"	# not available in kucoin without further api calls
-	#filled_orders_count="0"	##### not available from this bittrex api call
+	#filled_orders_count="0"	# TBC if supported on kucoin
 	echo "$trade_type trade submitted!"
 	echo "Trade Id: $last_order_id"
 	echo "Trade amount: $last_trade_amount"
@@ -373,6 +376,7 @@ submit_trade_order() {
 	send_email "$trade_type trade submitted - $market_name" "Trade type: $trade_type \nTrade Id: $last_order_id \nTrade rate: $trade_rate $quote_currency\nTrade amount: $trade_amount $base_currency\nFilled orders: $filled_orders"
 }
 
+# tested
 # https://www.kucoin.com/docs/rest/spot-trading/orders/cancel-order-by-orderid
 cancel_trade_order() {
 	order_id="$1"
@@ -392,18 +396,19 @@ cancel_trade_order() {
 	send_email "Trade cancelled - $market_name" "Order Id: $order_id \nCancel data: $cancel_trade_data \nOrder amount: $open_order_amount \nOrder amount remaining: $open_order_amount_remaining \nOrder amount filled: $open_order_amount_filled"
 }
 
+# tested
 # https://www.kucoin.com/docs/rest/spot-trading/orders/get-order-list
 get_trade_history() {
-	count="$1"	# not used in kucoin - hardcoded to last order [0]
+	count="$1"	# not used in kucoin - hardcoded to last order [0] #TODO - add count support
 	#past_trades="market=$market_name"
 	trade_history="$(mktemp "$tmp_file_template")"
-	private_api_query "orders?status=done&symbol=$market_name&type=limit" GET > "$trade_history" #TODO handle pagination
+	private_api_query "orders?status=done&symbol=$market_name&type=limit" GET > "$trade_history" # Only pull "done" status orders to avoid picking up cancelled trades. #TODO handle pagination
 	api_response_parser "$trade_history" "get_trade_history" || return 1
 	emtpy_history="$(grep '{' "$trade_history" | jq -r '.data[0]')"
 	if [ "$emtpy_history" = "" ]; then
 		no_history="true"
 		echo "no trade history found"
-	else 	#TODO
+	else
 		trade_history_id="$(grep '{' "$trade_history" | jq -r '.data[0].id')"
 		trade_history_market="$(grep '{' "$trade_history" | jq -r '.data[0].marketSymbol')"
 		trade_history_base_currency="$(echo "$trade_history_market" | awk -F '-' '{print $1}')"
@@ -413,9 +418,7 @@ get_trade_history() {
 		trade_history_quantity="$(grep '{' "$trade_history" | jq -r '.data[0].size' | xargs printf "%.8f")"
 		#trade_history_amount="$(grep '{' "$trade_history" | jq -r '.data[0].dealSize' | jq -r -s 'add' | xargs printf "%.8f")" # sum for split filled orders
 		trade_history_amount="$(grep '{' "$trade_history" | jq -r '.data[0].dealSize' | xargs printf "%.8f")"
-		trade_history_timestamp="$(date -d @$(grep '{' "$trade_history" | jq -r '.data[0].createdAt'))"	# already inepoch milliseconds on kucoin
-
-		###### probably need to handle cancelled orders that have 0 trade amount after minusing quantity remaining....?
+		trade_history_timestamp="$(date -d @$(grep '{' "$trade_history" | jq -r '.data[0].createdAt'))"	# already in epoch milliseconds on kucoin
 
 		# Align trade types with bot & cryptopia
 		if [ "$trade_history_type_kucoin" = "sell" ]; then
@@ -427,7 +430,7 @@ get_trade_history() {
 			return 1
 		fi
 		### Need to add a check if to determine if it's the first trade and ignore zero values. Really it should be null value... need to investigate
-		#api_value_validator "number" "$trade_history_id" "get_trade_history id" || return 1	### ID is a GUID in Bittrex & error checking handled above in trade type alignment
+		#api_value_validator "number" "$trade_history_id" "get_trade_history id" || return 1
 		#api_value_validator "string" "$trade_history_type" "get_trade_history type" || return 1
 		api_value_validator "number" "$trade_history_cost" "get_trade_history cost" || return 1
 		api_value_validator "number" "$trade_history_rate" "get_trade_history rate" || return 1

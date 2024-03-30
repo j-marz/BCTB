@@ -7,7 +7,7 @@
 # Created by: John Marzella
 # Created on: 29/Jan/2018
 
-# Dependencies: (curl jq bc tr)
+# Dependencies: (curl jq bc tr uuidgen)
 
 # terminate script on any errors
 #set -e 	# disabled to stop script terminating when there are API errors
