@@ -404,21 +404,21 @@ get_trade_history() {
 	trade_history="$(mktemp "$tmp_file_template")"
 	private_api_query "orders?status=done&symbol=$market_name&type=limit" GET > "$trade_history" # Only pull "done" status orders to avoid picking up cancelled trades. #TODO handle pagination
 	api_response_parser "$trade_history" "get_trade_history" || return 1
-	emtpy_history="$(grep '{' "$trade_history" | jq -r '.data[0]')"
+	emtpy_history="$(grep '{' "$trade_history" | jq -r '.data.items[0]')"	# items array may not be present if a single order exists...
 	if [ "$emtpy_history" = "" ]; then
 		no_history="true"
 		echo "no trade history found"
 	else
-		trade_history_id="$(grep '{' "$trade_history" | jq -r '.data[0].id')"
-		trade_history_market="$(grep '{' "$trade_history" | jq -r '.data[0].marketSymbol')"
+		trade_history_id="$(grep '{' "$trade_history" | jq -r '.data.items[0].id')"
+		trade_history_market="$(grep '{' "$trade_history" | jq -r '.data.items[0].marketSymbol')"
 		trade_history_base_currency="$(echo "$trade_history_market" | awk -F '-' '{print $1}')"
-		trade_history_type_kucoin="$(grep '{' "$trade_history" | jq -r '.data[0].side')"
-		trade_history_cost="$(grep '{' "$trade_history" | jq -r '.data[0].dealFunds' | xargs printf "%.8f")"
-		trade_history_rate="$(grep '{' "$trade_history" | jq -r '.data[0].price' | xargs printf "%.8f")"
-		trade_history_quantity="$(grep '{' "$trade_history" | jq -r '.data[0].size' | xargs printf "%.8f")"
-		#trade_history_amount="$(grep '{' "$trade_history" | jq -r '.data[0].dealSize' | jq -r -s 'add' | xargs printf "%.8f")" # sum for split filled orders
-		trade_history_amount="$(grep '{' "$trade_history" | jq -r '.data[0].dealSize' | xargs printf "%.8f")"
-		trade_history_timestamp="$(date -d @$(grep '{' "$trade_history" | jq -r '.data[0].createdAt'))"	# already in epoch milliseconds on kucoin
+		trade_history_type_kucoin="$(grep '{' "$trade_history" | jq -r '.data.items[0].side')"
+		trade_history_cost="$(grep '{' "$trade_history" | jq -r '.data.items[0].dealFunds' | xargs printf "%.8f")"
+		trade_history_rate="$(grep '{' "$trade_history" | jq -r '.data.items[0].price' | xargs printf "%.8f")"
+		trade_history_quantity="$(grep '{' "$trade_history" | jq -r '.data.items[0].size' | xargs printf "%.8f")"
+		#trade_history_amount="$(grep '{' "$trade_history" | jq -r '.data.items[0].dealSize' | jq -r -s 'add' | xargs printf "%.8f")" # sum for split filled orders
+		trade_history_amount="$(grep '{' "$trade_history" | jq -r '.data.items[0].dealSize' | xargs printf "%.8f")"
+		trade_history_timestamp="$(date -d @$(grep '{' "$trade_history" | jq -r '.data.items[0].createdAt'))"	# already in epoch milliseconds on kucoin
 
 		# Align trade types with bot & cryptopia
 		if [ "$trade_history_type_kucoin" = "sell" ]; then
