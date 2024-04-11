@@ -104,6 +104,7 @@ api_response_parser() {
 		sleep "$unexpected_error_sleep_time"	# sleep in case of API issues
 		return 1	# restart main trading loop
 	fi
+	#TODO: standardise common errors here and push metrics to influxdb (e.g. throttled by rate limit)
 }
 
 # Public API calls
@@ -212,15 +213,15 @@ get_trade_pairs() {
 # https://www.kucoin.com/docs/rest/spot-trading/market-data/get-trade-histories
 get_market_history() {
 	# add all prices from a given time period and divide by the number of prices to work out the average
-	#market_history_hours="24"	# currently not used by kucoin - last 100 results returned everytime - could use this instead https://www.kucoin.com/docs/rest/spot-trading/market-data/get-24hr-stats
+	#market_history_hours="24"	# currently not used by kucoin - API limits to the last 100 results. This limits MA periods to 100 max when using trades instead of candles. Need to start tracking history ourselves (might be able to leverage data collected for back-testing?)
 	market_history="$(mktemp "$tmp_file_template")"
 	public_api_query "market/histories?symbol=$market_name" > "$market_history"
 	api_response_parser "$market_history" "get_market_history" || return 1
 	market_history_prices="$(grep '{' "$market_history" | jq -r '.data[].price')"
 	market_history_trade_count="$(echo "$market_history_prices" | wc -l)"
-	if [ "$market_history_trade_count" -lt "$sma_period" ]; then
-		echo "Error: Trade count ($market_history_trade_count) is less than expected SMA period ($sma_period)"
-		send_email "Error: Trade count not met!" "Trade count: $market_history_trade_count \nSMA period config: $sma_period" "$market_history"
+	if [ "$market_history_trade_count" -lt "$sma_period" ] || [ "$market_history_trade_count" -lt "$ltma_period" ]; then
+		echo "Error: Trade count ($market_history_trade_count) is less than expected SMA period ($sma_period) or LTMA period ($ltma_period)"
+		send_email "Error: Trade count not met!" "Trade count: $market_history_trade_count \nSMA period config: $sma_period \nLTMA period config: $ltma_period" "$market_history"
 		return 1	# avoid incorrect averages when market count not met
 	fi
 }
@@ -267,6 +268,9 @@ get_candles() {
 
 	#candleType="trade" # trade | midpoint - not used by kucoin
 
+# TODO- limited to 100 results by default, need to use start and end times to pull more data...
+	#epoch_yesterday="$(date -d "yesterday" +%s)"	#24 hours ago
+
 	public_api_query "market/candles?type=$dataGroup&symbol=$market_name" > "$candles"
 	api_response_parser "$candles" "get_candles" || return 1
 
@@ -311,7 +315,7 @@ get_open_orders() {
 	api_response_parser "$open_orders" "get_open_orders" || return 1
 	##### need to handle multiple open orders?
 	open_order_check="$(grep '{' "$open_orders" | jq -r '.data.items[]')"
-	if [ -z "$open_order_check" ]; then
+	if [ -z "$open_order_check" ]; then 	#TODO: open orders sometimes null after buy on kucoin - need to investigate
 		no_open_orders="true"
 		echo "No open order(s) for $market_name market"
 	else
@@ -328,7 +332,7 @@ get_open_orders() {
 # https://www.kucoin.com/docs/rest/spot-trading/orders/place-order
 submit_trade_order() {
 	submit_trade="$(mktemp "$tmp_file_template")"
-	order_uuid="$(uuidgen)"	# requires uuid-runtime package - uuid required by kucoin exchange - #TODO add to docker container
+	order_uuid="$(uuidgen)"	# requires uuid-runtime package - uuid required by kucoin exchange
 	if [ "$trade_type" = "Buy" ]; then
 		trade='{"symbol": "'"$market_name"'","type": "limit","size": "'"$trade_amount"'","price": "'"$trade_rate"'","timeInForce": "GTC","side": "buy","clientOid": "'"$order_uuid"'"}'
 		private_api_query orders POST "$trade" > "$submit_trade"
@@ -352,7 +356,7 @@ submit_trade_order() {
 	#filled_orders="$(grep '{' "$submit_trade" | jq -r '.fillQuantity')"	# not available in kucoin without further api calls
 	#filled_orders_count="0"	# TBC if supported on kucoin
 	echo "$trade_type trade submitted!"
-	echo "Trade Id: $last_order_id"
+	echo "Trade Id: $last_order_id"	#TODO: open orders sometimes null after buy on kucoin - need to investigate - maybe use api response validator to check order id not null
 	echo "Trade amount: $last_trade_amount"
 	echo "Trade cost: $last_trade_cost"
 	#echo "Filled orders: $filled_orders"
@@ -419,7 +423,8 @@ get_trade_history() {
 		trade_history_quantity="$(grep '{' "$trade_history" | jq -r '.data.items[] | select(.cancelExist==false)' | jq -sr '.[0].size' | xargs printf "%.8f")"
 		#trade_history_amount="$(grep '{' "$trade_history" | jq -r '.data.items[] | select(.cancelExist==false)' | jq -sr '.[0].dealSize' | jq -r -s 'add' | xargs printf "%.8f")" # sum for split filled orders
 		trade_history_amount="$(grep '{' "$trade_history" | jq -r '.data.items[] | select(.cancelExist==false)' | jq -sr '.[0].dealSize' | xargs printf "%.8f")"
-		trade_history_timestamp="$(date -d @$(grep '{' "$trade_history" | jq -r '.data.items[] | select(.cancelExist==false)' | jq -sr '.[0].createdAt'))"	# already in epoch milliseconds on kucoin
+		trade_history_timestamp_kucoin="$(echo $(grep '{' "$trade_history" | jq -r '.data.items[] | select(.cancelExist==false)' | jq -sr '.[0].createdAt') / 1000 | bc)"	# already in epoch milliseconds on kucoin, so divide by 1000 before we covert to date
+		trade_history_timestamp="$(date -d @"$trade_history_timestamp_kucoin")"
 
 		# Align trade types with bot & cryptopia
 		if [ "$trade_history_type_kucoin" = "sell" ]; then

@@ -568,6 +568,8 @@ publish_to_influxdb() {
 	# arg2 currency|direction
 	# arg3 amount_in_btc|buy/sell
 
+	#TODO: Also track MAs and ask/bids to visualise in grafana and not rely on exchange UI
+
 	market_position
 
 	base_balance_in_quote_currency="$(echo "$base_balance * $market_last_price" | bc -l | xargs printf "%.8f")"
@@ -581,10 +583,10 @@ publish_to_influxdb() {
 	# only publish to influxdb if hostname set
 		# should probably check all influxdb variables here
 	if [ -n "$influxdb_host" ]; then
+		echo "Publishing metrics to influxdb host ($influxdb_host)"
 		for data in "${influxdb_data[@]}"; do
 			# push data to InfluxDB
 			curl \
-			-i \
 			--silent \
 			--request POST \
 			--url "http://$influxdb_host:$influxdb_port/write?db=$influxdb_database" \
