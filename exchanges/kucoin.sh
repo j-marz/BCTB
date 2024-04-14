@@ -178,6 +178,7 @@ get_trade_pairs() {
 	get_market
 	min_base_trade="$(echo "$min_trade_size * $market_last_price" | bc -l | xargs printf "%.8f")"
 	trade_pair_status="$(grep '{' "$trade_pairs" | jq -r --arg market_name "$market_name" '.data[] | select(.symbol==$market_name) | .enableTrading')"
+	trade_pair_price_increment="$(grep '{' "$trade_pairs" | jq -r --arg market_name "$market_name" '.data[] | select(.symbol==$market_name) | .priceIncrement')"	#kucoin uses price increments for trade amounts
 	# check if trade fee has changed from expected amount
 	if [ "$(echo "$trade_fee > $expected_trade_fee" | bc -l)" -eq 1 ]; then
 		echo "WARN: Trade fee has increased!"
@@ -330,10 +331,15 @@ get_open_orders() {
 
 # tested
 # https://www.kucoin.com/docs/rest/spot-trading/orders/place-order
+	# kucoin requires order amounts in pre-defined increments (priceIncrement in https://www.kucoin.com/docs/rest/spot-trading/market-data/get-symbols-list)
+		# only implemented on buy orders so far as sell is almost always maximum in my use case
 submit_trade_order() {
 	submit_trade="$(mktemp "$tmp_file_template")"
 	order_uuid="$(uuidgen)"	# requires uuid-runtime package - uuid required by kucoin exchange
 	if [ "$trade_type" = "Buy" ]; then
+		# align buy amount with price increment requirement on kucoin
+		trade_amount_rounding="$(echo "$trade_amount / $trade_pair_price_increment" | bc -l | xargs printf "%.0f")"	# round up increment to int
+		trade_amount="$(echo "$trade_amount_rounding * $trade_pair_price_increment" | bc -l | xargs printf "%.8f")" # multiply by increment
 		trade='{"symbol": "'"$market_name"'","type": "limit","size": "'"$trade_amount"'","price": "'"$trade_rate"'","timeInForce": "GTC","side": "buy","clientOid": "'"$order_uuid"'"}'
 		private_api_query orders POST "$trade" > "$submit_trade"
 	elif [ "$trade_type" = "Sell" ]; then
@@ -355,8 +361,11 @@ submit_trade_order() {
 	last_trade_amount="$trade_amount"
 	#filled_orders="$(grep '{' "$submit_trade" | jq -r '.fillQuantity')"	# not available in kucoin without further api calls
 	#filled_orders_count="0"	# TBC if supported on kucoin
+
+	api_value_validator "null" "$last_order_id" "submit_trade_order trade id" || return 1 # workaround kucoin api returning 200 status code for invalid quantity increment error 400100"
+
 	echo "$trade_type trade submitted!"
-	echo "Trade Id: $last_order_id"	#TODO: open orders sometimes null after buy on kucoin - need to investigate - maybe use api response validator to check order id not null
+	echo "Trade Id: $last_order_id"
 	echo "Trade amount: $last_trade_amount"
 	echo "Trade cost: $last_trade_cost"
 	#echo "Filled orders: $filled_orders"

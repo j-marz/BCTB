@@ -33,20 +33,34 @@ api_value_validator() {
 			calling_function=""	# clear variable
 			return 1	# restart main trading loop
 		fi
+	elif [ "$validation_type" = "null" ]; then
+		# check if string is null
+		if [ "$validation_value" = "" ]; then
+			echo "ERROR: API returned null value for $calling_function"
+			send_email "ERROR: API returned null value for $calling_function" "Type: $validation_type \nValue: $validation_value"
+			sleep 60
+			validation_type=""	# clear variable
+			validation_value=""	# clear variable
+			calling_function=""	# clear variable
+			return 1	# restart main trading loop
+		fi
 	elif [ "$validation_type" = "string" ]; then
 		# check if string exists in whitelist
 		for string in "${string_whitelist[@]}"; do
-			if [ "$string" != "$validation_value" ]; then
-				#counter or something needs to go here
-				echo "ERROR: API returned unknown or empty string for $calling_function"
-				send_email "ERROR: API returned unknown or empty string for $calling_function" "Type: $validation_type \nValue: $validation_value"
-				sleep 60
-				validation_type=""	# clear variable
-				validation_value=""	# clear variable
-				calling_function=""	# clear variable
-				return 1	# restart main trading loop
+			if [ "$string" = "$validation_value" ]; then
+				value_in_string_array="true"
 			fi
 		done
+		if [ "$value_in_string_array" != "true" ]; then
+			echo "ERROR: API returned unknown string for $calling_function"
+			send_email "ERROR: API returned unknown string for $calling_function" "Type: $validation_type \nValue: $validation_value"
+			sleep 60
+			validation_type=""	# clear variable
+			validation_value=""	# clear variable
+			calling_function=""	# clear variable
+			value_in_string_array=""	# clear variable
+			return 1	# restart main trading loop
+		fi
 	else
 		echo "ERROR: Unknown API validation type for $calling_function"
 		send_email "ERROR: Unknown API validation type for $calling_function" "Type: $validation_type \nValue: $validation_value"
@@ -60,6 +74,7 @@ api_value_validator() {
 	validation_type=""	# clear variable
 	validation_value=""	# clear variable
 	calling_function=""	# clear variable
+	value_in_string_array=""	# clear variable
 }
 
 cleanup() {
@@ -310,6 +325,7 @@ trade_position_age () {
 	fi
 }
 
+# TODO: need to check if immediate buy will occur after stop loss due to MA strategy and avoid selling in this case.
 stop_loss() {
 	position_percentage="$(echo "(($market_bid - $trade_history_rate) / $trade_history_rate) * 100" | bc -l | xargs printf "%.8f")"
 	stop_loss_compare="$(echo "$position_percentage <= $stop_loss_percentage" | bc -l)"
