@@ -418,10 +418,28 @@ get_trade_history() {
 	private_api_query "orders?status=done&symbol=$market_name&type=limit" GET > "$trade_history" # Only pull "done" status orders to avoid picking up open orders
 	api_response_parser "$trade_history" "get_trade_history" || return 1
 	emtpy_history="$(grep '{' "$trade_history" | jq -r '.data.items[0]')"	# items array may not be present if a single order exists...
-	if [ "$emtpy_history" = "" ]; then
+	if [ "$emtpy_history" = "" ] || [ "$emtpy_history" = "null" ]; then
+		#Kucoin only returns results for done orders for the last 7 days, so we need to go back in time to find older orders. History is kept for 6 months.
+		echo "no trade history found in last 7 days (kucoin max history window) - looking back further"
 		no_history="true"
-		echo "no trade history found"
-	else
+		kucoin_history_days="7"
+		while [ "$kucoin_history_days" -lt "$max_position_age" ] && [ "$no_history" = "true" ]; do
+			# increment history days by 7 to find older orders up to max position age
+			let kucoin_history_days=kucoin_history_days+7
+			kucoin_history_start_millis="$(date --date="$kucoin_history_days days ago" +%s%3N)"
+			private_api_query "orders?status=done&symbol=$market_name&type=limit&startAt=$kucoin_history_start_millis" GET > "$trade_history"
+			api_response_parser "$trade_history" "get_trade_history" || return 1
+			emtpy_history="$(grep '{' "$trade_history" | jq -r '.data.items[0]')"	#TODO: should check totalNum instead {"code":"200000","data":{"currentPage":1,"pageSize":50,"totalNum":0,"totalPage":0,"items":[]}}
+			if [ "$emtpy_history" = "" ] || [ "$emtpy_history" = "null" ]; then
+				no_history="true"
+				echo "no history found up-to $kucoin_history_days days ago"
+			else
+				no_history="false"
+				echo "trade history found up-to $kucoin_history_days days ago"
+			fi
+		done
+	fi
+	if [ "$no_history" != "true" ]; then
 		# need to check if the order has been cancelled using select(.cancelExist==false) | pass back to jq to slurp into an array
 		trade_history_id="$(grep '{' "$trade_history" | jq -r '.data.items[] | select(.cancelExist==false)' | jq -sr '.[0].id')"
 		trade_history_market="$(grep '{' "$trade_history" | jq -r '.data.items[] | select(.cancelExist==false)' | jq -sr '.[0].symbol')"
@@ -441,7 +459,7 @@ get_trade_history() {
 		elif [ "$trade_history_type_kucoin" = "buy" ]; then
 			trade_history_type="Buy"
 		else
-			echo "Error: unknown trade history type: $trade_history_type"
+			echo "Error: unknown trade history type: $trade_history_type_kucoin"
 			return 1
 		fi
 		### Need to add a check if to determine if it's the first trade and ignore zero values. Really it should be null value... need to investigate
