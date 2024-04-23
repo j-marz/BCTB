@@ -438,8 +438,10 @@ get_trade_history() {
 				echo "trade history found up-to $kucoin_history_days days ago"
 			fi
 		done
+	else
+		no_history="false"
 	fi
-	if [ "$no_history" != "true" ]; then
+	if [ "$no_history" = "false" ]; then
 		# need to check if the order has been cancelled using select(.cancelExist==false) | pass back to jq to slurp into an array
 		trade_history_id="$(grep '{' "$trade_history" | jq -r '.data.items[] | select(.cancelExist==false)' | jq -sr '.[0].id')"
 		trade_history_market="$(grep '{' "$trade_history" | jq -r '.data.items[] | select(.cancelExist==false)' | jq -sr '.[0].symbol')"
