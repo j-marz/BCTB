@@ -50,16 +50,23 @@ trade_decision() {
 		if [ "$compare_stma_mtma" -eq 1 ] && [ "$compare_stma_ltma" -eq 1 ] && [ "$compare_mtma_ltma" -eq 1 ]; then
 			market_flow="from_bull_to_bear"
 			echo "Sell Signal: SMTA ($stma_average) < MTMA ($mtma_average) and both are > LTMA ($ltma_average) using market history ($ma_data_source)"
-			tmac_profit_check="$(echo "$market_bid > (($trade_history_rate * ($trade_fee / 100)) + $trade_history_rate + ($market_bid * ($trade_fee / 100)))" | bc -l)"
-			if [ "$tmac_profit_check" -eq 1 ]; then	# In case MA signal alone causes a loss
-				echo "Profit check: Market bid ($market_bid) > Last $trade_history_type trade ($trade_history_rate)"
+			if [ "$risky_mode" = "true" ]; then
+				echo "Risky mode ($risky_mode) - proceeding to sell without profit check"
 				echo "SELL!"
 				trade_rate="$market_bid"
 				action="Sell"
 			else
-				echo "Trade would result in a loss using TMAC signal alone"
-				echo "HOLD!"
-				action="Hold"
+				tmac_profit_check="$(echo "$market_bid > (($trade_history_rate * ($trade_fee / 100)) + $trade_history_rate + ($market_bid * ($trade_fee / 100)))" | bc -l)"
+				if [ "$tmac_profit_check" -eq 1 ]; then	# In case MA signal alone causes a loss
+					echo "Profit check: Market bid ($market_bid) > Last $trade_history_type trade ($trade_history_rate)"
+					echo "SELL!"
+					trade_rate="$market_bid"
+					action="Sell"
+				else
+					echo "Trade would result in a loss using TMAC signal alone"
+					echo "HOLD!"
+					action="Hold"
+				fi
 			fi
 		else
 			echo "No TMAC cross-overs detected"
