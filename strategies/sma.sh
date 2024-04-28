@@ -15,7 +15,7 @@ trade_decision() {
 		sma_average="$(echo "$market_history_prices" | head -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	elif [ "$ma_data_source" = "candles" ]; then
 		get_candles || return 1
-		sma_average="$(echo "$candles_close_list" | tail -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
+		sma_average="$(echo "$candles_close_list" | "$candles_filter" -n "$sma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	else
 		echo "ERROR: Unknown SMA data source ($ma_data_source)"
 		send_email "ERROR: Unknown SMA data source ($ma_data_source)"

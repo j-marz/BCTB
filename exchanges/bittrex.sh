@@ -409,4 +409,7 @@ get_candles() {
 	candles_high_list="$(grep '^{' "$candles" | jq -r '.result[].H')"
 	candles_low_list="$(grep '^{' "$candles" | jq -r '.result[].L')"
 	candles_close_list="$(grep '^{' "$candles" | jq -r '.result[].C')"
+
+	#How to filter candles - head when newest first, tail when newest last
+	candles_filter="tail"
 }

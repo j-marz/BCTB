@@ -18,8 +18,8 @@ trade_decision() {
 		ltma_average="$(echo "$market_history_prices" | head -n "$ltma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	elif [ "$ma_data_source" = "candles" ]; then
 		get_candles || return 1
-		stma_average="$(echo "$candles_close_list" | tail -n "$stma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
-		ltma_average="$(echo "$candles_close_list" | tail -n "$ltma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
+		stma_average="$(echo "$candles_close_list" | "$candles_filter" -n "$stma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
+		ltma_average="$(echo "$candles_close_list" | "$candles_filter" -n "$ltma_period" | jq -r -s 'add/length' | xargs printf "%.8f")"
 	else
 		echo "ERROR: Unknown DMAC data source ($ma_data_source)"
 		send_email "ERROR: Unknown DMAC data source ($ma_data_source)"

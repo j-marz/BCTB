@@ -279,6 +279,9 @@ get_candles() {
 	candles_high_list="$(grep '{' "$candles" | jq -r '.data[] | .[3]')"
 	candles_low_list="$(grep '{' "$candles" | jq -r '.data[] | .[4]')"
 	candles_close_list="$(grep '{' "$candles" | jq -r '.data[] | .[2]')"
+
+	#How to filter candles - head when newest first, tail when newest last
+	candles_filter="head"	# Kucoin returns newest candles first
 }
 
 
