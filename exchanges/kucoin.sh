@@ -154,12 +154,12 @@ get_markets() {
 	fi
 
 	previous_market_name="$market_name"
-	market_volume="$(jq -s -r 'sort_by(.volValue) | .[-1] | .volValue' "$markets_filtered" | xargs printf "%.8f")"	# base (alt coin) volume
-	market_base_volume="$(jq -s -r 'sort_by(.vol) | .[-1] | .vol' "$markets_filtered" | xargs printf "%.8f")"	# quote (BTC) volume
+	market_volume="$(jq -s -r 'sort_by(.volValue | tonumber) | .[-1] | .volValue' "$markets_filtered" | xargs printf "%.8f")"	# quote (BTC) volume
+	market_base_volume="$(jq -s -r 'sort_by(.vol | tonumber) | .[-1] | .vol' "$markets_filtered" | xargs printf "%.8f")"	# base (alt coin) volume
 	#market_buy_base_volume="$(jq -s -r 'sort_by(.BaseVolume) | .[-1] | .BuyBaseVolume' "$markets_filtered" | xargs printf "%.8f")"
 	#market_sell_base_volume="$(jq -s -r 'sort_by(.BaseVolume) | .[-1] | .SellBaseVolume' "$markets_filtered" | xargs printf "%.8f")"
-	market_name="$(jq -s -r 'sort_by(.vol) | .[-1] | .symbol' "$markets_filtered")"	# select market with largest base volume
-	base_currency="$(echo "$market_name" | awk -F '-' '{print $1}')"	# reversed in v3
+	market_name="$(jq -s -r 'sort_by(.volValue | tonumber) | .[-1] | .symbol' "$markets_filtered")"	# select market with largest base volume
+	base_currency="$(echo "$market_name" | awk -F '-' '{print $1}')"
 }
 
 # tested
