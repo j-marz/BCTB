@@ -468,7 +468,12 @@ take_profit_check() {
 	# this doesn't take fees into account - fee percentage is expected to be factored into take_profit_percentage config var
 	# ToDo: should probably perform the fee calc here and make the config more simple (profit after fee loss)
 	take_profit_percentage_calc="$(echo "(($market_bid - $trade_history_rate) / $trade_history_rate) * 100" | bc -l | xargs printf "%.8f")"
-	take_profit_percentage_compare="$(echo "$take_profit_percentage_calc >= $take_profit_percentage" | bc -l)"
+	if [ "$market_flow" = "bull" ]; then
+		# Increase take profit percentage based on market flow to increase profits
+		take_profit_percentage_compare="$(echo "$take_profit_percentage_calc >= ( $take_profit_percentage * $take_profit_multiplier" | bc -l)"
+	else
+		take_profit_percentage_compare="$(echo "$take_profit_percentage_calc >= $take_profit_percentage" | bc -l)"
+	fi
 	if [ "$take_profit_percentage_compare" -eq 1 ]; then
 		echo "Take profit triggered - market bid up $take_profit_percentage_calc %"
 		send_email "INFO: Take profit percentage triggered for $market_name" "Profit percentage: $take_profit_percentage_calc %"
