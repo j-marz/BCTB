@@ -35,7 +35,7 @@ api_value_validator() {
 		fi
 	elif [ "$validation_type" = "null" ]; then
 		# check if string is null
-		if [ "$validation_value" = "" ]; then
+		if [ "$validation_value" = "" ] || [ "$validation_value" = "null" ]; then
 			echo "ERROR: API returned null value for $calling_function"
 			send_email "ERROR: API returned null value for $calling_function" "Type: $validation_type \nValue: $validation_value"
 			sleep 60
@@ -369,6 +369,7 @@ stop_loss() {
 		if [ "$stop_loss_sell" = "true" ]; then
 			let stop_loss_counter=stop_loss_counter+1
 			if [ "$stop_loss_counter" -eq 2 ]; then
+				#TODO: set config to avoid using blacklist when using static trade pair and not dynamic volume mode
 				blacklist_manager "add" "$market_name" "24" "consecutive stop loss triggers" || return 1
 			fi
 		fi
