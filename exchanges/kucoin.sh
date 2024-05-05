@@ -179,6 +179,7 @@ get_trade_pairs() {
 	min_base_trade="$(echo "$min_trade_size * $market_last_price" | bc -l | xargs printf "%.8f")"
 	trade_pair_status="$(grep '{' "$trade_pairs" | jq -r --arg market_name "$market_name" '.data[] | select(.symbol==$market_name) | .enableTrading')"
 	trade_pair_price_increment="$(grep '{' "$trade_pairs" | jq -r --arg market_name "$market_name" '.data[] | select(.symbol==$market_name) | .priceIncrement')"	#kucoin uses price increments for trade amounts
+	trade_pair_base_increment="$(grep '{' "$trade_pairs" | jq -r --arg market_name "$market_name" '.data[] | select(.symbol==$market_name) | .baseIncrement')"	#kucoin uses base increments for trade amounts
 	# check if trade fee has changed from expected amount
 	if [ "$(echo "$trade_fee > $expected_trade_fee" | bc -l)" -eq 1 ]; then
 		echo "WARN: Trade fee has increased!"
@@ -341,8 +342,8 @@ submit_trade_order() {
 	order_uuid="$(uuidgen)"	# requires uuid-runtime package - uuid required by kucoin exchange
 	if [ "$trade_type" = "Buy" ]; then
 		# align buy amount with price increment requirement on kucoin
-		trade_amount_rounding="$(echo "$trade_amount / $trade_pair_price_increment" | bc -l | xargs printf "%.0f")"	# round up increment to int
-		trade_amount="$(echo "$trade_amount_rounding * $trade_pair_price_increment" | bc -l | xargs printf "%.8f")" # multiply by increment
+		trade_amount_rounding="$(echo "$trade_amount / $trade_pair_base_increment" | bc -l | xargs printf "%.0f")"	# round up increment to int
+		trade_amount="$(echo "$trade_amount_rounding * $trade_pair_base_increment - $trade_pair_base_increment" | bc -l)" # multiply and then subtract by increment without xargs
 		trade='{"symbol": "'"$market_name"'","type": "limit","size": "'"$trade_amount"'","price": "'"$trade_rate"'","timeInForce": "GTC","side": "buy","clientOid": "'"$order_uuid"'"}'
 		private_api_query orders POST "$trade" > "$submit_trade"
 	elif [ "$trade_type" = "Sell" ]; then
