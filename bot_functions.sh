@@ -470,7 +470,7 @@ take_profit_check() {
 	take_profit_percentage_calc="$(echo "(($market_bid - $trade_history_rate) / $trade_history_rate) * 100" | bc -l | xargs printf "%.8f")"
 	if [ "$market_flow" = "bull" ]; then
 		# Increase take profit percentage based on market flow to increase profits
-		take_profit_percentage_compare="$(echo "$take_profit_percentage_calc >= ( $take_profit_percentage * $take_profit_multiplier" | bc -l)"
+		take_profit_percentage_compare="$(echo "$take_profit_percentage_calc >= ( $take_profit_percentage * $take_profit_multiplier )" | bc -l)"
 	else
 		take_profit_percentage_compare="$(echo "$take_profit_percentage_calc >= $take_profit_percentage" | bc -l)"
 	fi
