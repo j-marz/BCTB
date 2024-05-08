@@ -236,6 +236,7 @@ EOF
 			if [ "$no_open_orders" = "true" ]; then
 				echo "Trade completed - Id: $old_open_order_id"
 				echo "Start a new trade :)"
+				action=""	# clear cancel action from when no_open_orders=false
 				break #exit while loop
 			elif [ "$no_open_orders" = "false" ]; then
 				echo "Order id: $open_order_id still open"
