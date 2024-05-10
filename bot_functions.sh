@@ -361,16 +361,18 @@ stop_loss() {
 			return 1
 		fi
 
-		# blacklist markets with extreme volatility for 24 hours
+		# blacklist markets with too many stop losses
 		if [ "$base_currency" = "volume" ] && [ "$previous_market_name" != "$market_name" ]; then
 			# reset counter when market changes in dynamic volume based trading config
 			stop_loss_counter="0"
 		fi
 		if [ "$stop_loss_sell" = "true" ]; then
 			let stop_loss_counter=stop_loss_counter+1
-			if [ "$stop_loss_counter" -eq 2 ]; then
-				#TODO: set config to avoid using blacklist when using static trade pair and not dynamic volume mode
-				blacklist_manager "add" "$market_name" "24" "consecutive stop loss triggers" || return 1
+			if [ "$stop_loss_counter" -eq "$blacklist_threshold" ]; then
+				blacklist_manager "add" "$market_name" "$blacklist_expiry" "consecutive stop loss triggers" || return 1
+				if [ "$base_currency" != "volume" ]; then
+					stop_loss_counter="0"	# reset stop loss counter for static market after it's blacklisted
+				fi
 			fi
 		fi
 }

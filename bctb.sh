@@ -130,14 +130,9 @@ do
 	echo "---------------------"
 
 	# publish latest data to influxdb
-	#publish_to_influxdb || continue
 	publish_to_influxdb	# don't break loop if this fails
 
 	blacklist_manager "update" || continue
-
-### NEED TO CHECK IF STATIC MARKET HAS BEEN BLACKLISTED HERE
-	## HOW TO CHECK IF OPEN ORDER EXISTS THOUGH?
-	## maybe add else statement in the volume based trading below?
 
 	# Volume based base currency (alt coin) selection
 	if [ "$dynamic_base" = "true" ]; then
@@ -156,6 +151,14 @@ do
 		else
 			echo "Error: could not determine trade history during dynamic_base selection checks"
 			sleep 5
+			continue
+		fi
+	else
+		# assume static market - check if it's blacklisted, sleep and restart loop to recheck
+		blacklist_manager "list" || return 1
+		if [ "$blacklist_empty" = "false" ] && [ "$blacklist_contains" = "$market_name" ]; then
+			echo "Static market ($market_name) found in blacklist - waiting for blacklist to expire"
+			sleep 60
 			continue
 		fi
 	fi
@@ -219,7 +222,7 @@ EOF
 		echo "Hunt for a new trade!"
 		#Check trade history
 	elif [ "$no_open_orders" = "false" ]; then
-		echo "Open order found - $open_order_id - waiting up-to 10 mins in case trading is slow"	# increased from 300 to 600 second to support larger trade volumes
+		echo "Open order found - $open_order_id - waiting up-to 20 mins in case trading is slow"	# loop_limit * sleep 10
 		# should really check the actual order id here...
 		old_open_order_id="$open_order_id"
 		loop_count="1"
@@ -252,6 +255,8 @@ EOF
 				break
 			fi
 			let loop_count=loop_count+1
+			# publish latest data to influxdb - added here to avoid gaps and dips in metrics while waiting for orders to fill
+			publish_to_influxdb	# don't break loop if this fails
 		done
 	else
 		echo "Error: unable to determine if open order(s) exist"
