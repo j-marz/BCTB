@@ -213,7 +213,7 @@ EOF
 	get_trade_pairs || continue
 	echo "Market: $market_name"
 	echo "Trade fee: $trade_fee percent"
-	echo "Min base trade: $min_base_trade $quote_currency" # API mentions "base", but it's really quote currency...
+	echo "Min base trade: $min_base_trade $quote_currency"
 
 	# Check open orders
 	get_open_orders || continue

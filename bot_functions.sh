@@ -345,6 +345,7 @@ stop_loss() {
 				if [ "$stop_loss_compare" -eq 1 ]; then
 					send_email "Warn: Stop Loss threshold of $stop_loss_percentage percent met after waiting" "Position: $position_percentage percent"
 					stop_loss_sell="true"
+					# TODO: force market instead of limit sell?
 				elif [ "$stop_loss_compare" -eq 0 ]; then
 					stop_loss_sell="false"
 				else
@@ -483,6 +484,7 @@ take_profit_check() {
 		take_profit="true"
 	elif [ "$take_profit_percentage_compare" -eq 0 ]; then
 		take_profit="false"
+		echo "Trade position profit percentage: $take_profit_percentage_calc %"
 	else
 		echo "Error: can't compare take profit percentage"
 		sleep 5

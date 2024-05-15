@@ -121,3 +121,5 @@ trade_decision() {
 
 	echo "Market flow: $market_flow"
 }
+
+# TODO: need to leverage market_flow to use trends to determine if new position should be entered outside of tmac alone. Maybe incorporate MACD signals.
