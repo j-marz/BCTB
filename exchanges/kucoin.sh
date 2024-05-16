@@ -4,7 +4,9 @@
 # ----------------------------------------
 # API documentation:  https://www.kucoin.com/docs/beginners/introduction
 
-# API rate limiting: 2000 api calls per 30 seconds, therefore recommend rate_limit_sleep="20" in config
+# API rate limiting: 2000 public api calls per 30 seconds & 4000 spot api calls per 30 seconds
+	# therefore using lowest rate limit of 2000 is ~66 calls per second
+	# bctb should average 10 calls per loop, so we could set sleep to 1, but recommend rate_limit_sleep="5" in config
 
 # Variables
 market_name="$base_currency-$quote_currency"	# must be upper case in config - TODO: should validate or force upper from config import
