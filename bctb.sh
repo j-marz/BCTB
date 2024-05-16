@@ -129,9 +129,6 @@ do
 	echo ""
 	echo "---------------------"
 
-	# publish latest data to influxdb
-	publish_to_influxdb	# don't break loop if this fails
-
 	blacklist_manager "update" || continue
 
 	# Volume based base currency (alt coin) selection
@@ -305,6 +302,9 @@ EOF
 
 	# Trading logic
 	trading_action || continue
+
+	# publish data to influxdb
+	publish_to_influxdb	# don't break loop if this fails
 
 	# clean up temp files
 	cleanup

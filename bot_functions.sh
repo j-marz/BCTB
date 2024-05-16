@@ -588,28 +588,41 @@ trading_action(){
 #}
 
 
-
 # push data into influxdb to build graphs and alerts
 publish_to_influxdb() {
-	# arg1 balance|trade
-	# arg2 currency|direction
-	# arg3 amount_in_btc|buy/sell
-
-	#TODO: Also track MAs and ask/bids to visualise in grafana and not rely on exchange UI
-
-	market_position
-
-	base_balance_in_quote_currency="$(echo "$base_balance * $market_last_price" | bc -l | xargs printf "%.8f")"
-
-	publish_base_balance="balance,holding=$base_currency value=$base_balance_in_quote_currency"
-	publish_quote_balance="balance,holding=$quote_currency value=$quote_balance"
-	publish_total_balance="balance,holding=total_holiding value=$quote_total"
-
-	influxdb_data=("$publish_base_balance" "$publish_quote_balance" "$publish_total_balance")
+	# Idea: make this function generic and pass data via args for flexibility
+		# arg1 balance|trade
+		# arg2 currency|direction
+		# arg3 amount_in_btc|buy/sell
+	# Only publish metrics and use logs to visualise buys, sells and stop loss events for now
 
 	# only publish to influxdb if hostname set
-		# should probably check all influxdb variables here
-	if [ -n "$influxdb_host" ]; then
+	if [ -n "$influxdb_host" ]; then # TODO: should probably check all influxdb variables here
+		market_position
+		base_balance_in_quote_currency="$(echo "$base_balance * $market_last_price" | bc -l | xargs printf "%.8f")"
+		publish_base_balance="balance,holding=$base_currency value=$base_balance_in_quote_currency"
+		publish_quote_balance="balance,holding=$quote_currency value=$quote_balance"
+		publish_total_balance="balance,holding=total_holiding value=$quote_total"
+
+		# publish market ask and bid - expects get_market has already run and variables in memory
+		publish_market_ask="ask,market=$market_name value=$market_ask"
+		publish_market_bid="bid,market=$market_name value=$market_bid"
+
+		# publish moving averages - expects trade_decision has already run and variables in memory
+			# only covers tmac strategy - expect errors if other strategy used...
+		publish_stma="stma,market=$market_name value=$stma_average"
+		publish_mtma="mtma,market=$market_name value=$mtma_average"
+		publish_ltma="ltma,market=$market_name value=$ltma_average"
+
+		# trade position percentage - expects take_profit has already run and variables in memory
+		if [ "$trade_history_type" = "Buy" ]; then
+			publish_trade_position="trade_position,market=$market_name value=$take_profit_percentage_calc"
+		else
+			publish_trade_position="trade_position,market=$market_name value=0"	# hardcoded to 0 and assumes bot only works off single positions
+		fi
+
+		influxdb_data=("$publish_base_balance" "$publish_quote_balance" "$publish_total_balance" "$publish_market_ask" "$publish_market_bid" "$publish_stma" "$publish_mtma" "$publish_ltma" "$publish_trade_position")
+
 		echo "Publishing metrics to influxdb host ($influxdb_host)"
 		for data in "${influxdb_data[@]}"; do
 			# push data to InfluxDB
